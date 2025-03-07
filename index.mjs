@@ -1,39 +1,41 @@
-import fs from "fs/promises";
 import express from "express";
 import bodyParser from "body-parser";
+import path from "path";
+import { fileURLToPath } from "url";
+
 
 const app = express();
-app.use((req, res, next) => {
-	const requestIp = req.headers["x-forwarded-for"] || req.socket.remoteAddress;
-	const requestProtocol = req.headers["x-forwarded-proto"] || req.protocol;
-	console.log(`[REQUEST]: ${requestIp}: (${requestProtocol}) ${req.originalUrl}`);
-	next();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+app.use(express.static(path.join(__dirname, "public")));
+app.use(bodyParser.json());
+
+function getRandomWeather() {
+    const temperatures = [20, 21, 22, 23, 24, 25,26,27, 28, 30, 32, 35];
+    const conditions = ["Cerah", "Mendung", "Hujan", "Badai", "Berkabut"];
+    const humidity = Math.floor(Math.random() * 51) + 50;
+
+    return {
+        temperature: temperatures[Math.floor(Math.random() * temperatures.length)],
+        condition: conditions[Math.floor(Math.random() * conditions.length)],
+        humidity
+    };
+}
+
+app.use((request, response, next) => {
+    console.log(`[REQUEST]: ${request.method} ${request.originalUrl}`);
+    next();
 });
-app.get("/home", (request, response) => {
-	response.write("Halo!");
-	response.end();
+
+
+app.get("/weather/:city", (request, response) => {
+    const city = request.params.city;
+    const weather = getRandomWeather();
+    
+    response.json({ city, ...weather });
 });
-app.put("/add-data", bodyParser.urlencoded({ extended: true }), async (request, response) => {
-	console.log(request.body);
-	const randomId = Math.random().toString(36).substring(2, 7);
-	await fs.writeFile(`test-${randomId}.json`, JSON.stringify(request.body), "utf-8");
-	response.write(`Data ditambahkan dengan id: ${randomId}`);
-	response.end();
-});
-app.get("/get-data/:id", async (request, response) => {
-	const filePath = `test-${request.params.id}.json`;
-	const fileContent = await fs.readFile(filePath, "utf-8");
-	const fileData = JSON.parse(fileContent);
-	response.json(fileData);
-});
-app.delete("/delete-data/:id", async (request, response) => {
-	const filePath = `test-${request.params.id}.json`;
-	await fs.rm(filePath, { force: true });
-	response.write(`Data berhasil dihapus!`);
-	response.end();
-});
-// Patch updates are left for the readers' excercise
 
 app.listen(3000, () => {
-	console.log("Server started at port 3000");
+    console.log("Server berjalan di http://localhost:3000");
 });
